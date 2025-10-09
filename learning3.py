@@ -15,4 +15,9 @@ while True:
 if name not in names_list:
     input("So, who are you? ")
     if name not in names_list:
-        print("I still don't know you.")
+        print("I still don't know you.\n" "You must be a new student.")
+        
+input("Welcome to Hogwarts, " + name + "!")
+names_list.append(name)
+
+print("Current students are now " + str(names_list))
