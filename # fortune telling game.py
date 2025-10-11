@@ -8,8 +8,8 @@ def tell_fortune():
 input("What is your desire, my child?" + "\n" + "> ")
 print("> " + tell_fortune())
 
-if input("Do you want to play again? (y/n) " + "\n" + "> ") == "n":
-    print("Well, you're no fun! Boo!")
-else:
+if input("Do you want to play again? (yes or no) " + "\n" + "> ").lower() == "yes" or "y":
     input("What is your desire now, little one?" + "\n" + "> ")
     print("> " + tell_fortune())
+else:
+    print("Well, you're no fun! Boo!")
