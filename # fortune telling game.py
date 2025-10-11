@@ -8,7 +8,7 @@ def tell_fortune():
 input("What is your desire, my child?" + "\n" + "> ")
 print("> " + tell_fortune())
 
-if input("Do you want to play again? (yes or no) " + "\n" + "> ").lower() == "yes" or "y":
+if input("Do you want to play again? " + "\n" + "> ").lower() in ["yes", "y"]:
     input("What is your desire now, little one?" + "\n" + "> ")
     print("> " + tell_fortune())
 else:
