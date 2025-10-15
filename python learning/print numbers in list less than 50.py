@@ -3,9 +3,9 @@ import random
 list = [random.randint(1, 100) for i in range(20)]
 print(list)
 
-# make new list with numbers less than 5
-under_five = [i for i in list if i < 50]
-print(under_five)
+# make new list with numbers less than 50
+under_fifty = [i for i in list if i < 50]
+print(under_fifty)
 
 # ask for number
 number = int(input("Enter a number: "))
