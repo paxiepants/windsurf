@@ -1,19 +1,20 @@
-# prompt user for mathmatical expression
-expression = input("Enter mathmatical expression: ")
+# prompt user for mathematical expression
+expression = input("Enter mathematical expression: ")
 
 # extract operator and operands and convert to float
 for op in ["+", "-", "*", "/"]:
     if op in expression:
-        parts = expression.split(op,1)
+        parts = expression.split(op, 1)
+        if len(parts) != 2:
+            raise ValueError("Invalid expression")
         x = float(parts[0])
-        y = op
         z = float(parts[1])
+        y = op
         break
 else:
-    print("Invalid expression")
-    exit()
+    raise ValueError("No valid operator found")
 
-#perform the calculation
+# perform the calculation
 if y == "+":
     result = x + z
 elif y == "-":
@@ -23,11 +24,9 @@ elif y == "*":
 elif y == "/":
     result = x / z
     if z == 0:
-        print("Cannot divide by zero")
-        exit()
+        raise ZeroDivisionError("Cannot divide by zero")
 else:
-    print("Invalid operator")
-    exit()
+    raise ValueError("Invalid operator")
 
 # print result as float with one decimal place
 print(f"{result:.1f}")
