@@ -109,7 +109,7 @@ def main_menu():
     
     while True:
         print("\nMenu:")
-        print("1. Search for a movie")
+        print("1. Add a movie")
         print("2. Display all movies")
         print("3. Quit")
         
