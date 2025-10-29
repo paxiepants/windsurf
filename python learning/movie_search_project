@@ -79,8 +79,24 @@ def insert_movie(conn, movie):
         print(f"Error processing movie data: {e}")
         return False
 
-# main function
-def main():
+# create a function to display all movies
+def display_movies(conn):
+    try:
+        c = conn.cursor()
+        c.execute("SELECT * FROM movies")
+        rows = c.fetchall()
+        if not rows:
+            print("No movies found in the database")
+            return
+        
+        for row in rows:
+            print(f"Title: {row[1]}, Year: {row[2]}, Rating: {row[3]}")
+    except Error as e:
+        print(f"Database error: {e}")
+
+# define main menu
+def main_menu():
+    # Create database connection
     conn = create_connection("movies.db")
     if not conn:
         print("Error: Could not connect to the database")
@@ -89,21 +105,32 @@ def main():
     create_table(conn)
     
     while True:
-        movie_name = input("\nEnter movie name (or 'quit' to exit): ").strip()
-        if movie_name.lower() == 'quit':
+        print("\nMenu:")
+        print("1. Search for a movie")
+        print("2. Display all movies")
+        print("3. Quit")
+        
+        choice = input("Enter your choice: ").strip()
+        
+        if choice == '1':
+            movie_name = input("\nEnter movie name: ").strip()
+            if not movie_name:
+                print("Please enter a valid movie name")
+                continue
+                
+            movie = search_movie(movie_name)
+            if movie:
+                insert_movie(conn, movie)
+        elif choice == '2':
+            display_movies(conn)
+        elif choice == '3':
+            print("\nGoodbye!")
             break
-            
-        if not movie_name:
-            print("Please enter a valid movie name")
-            continue
-            
-        movie = search_movie(movie_name)
-        if movie:
-            insert_movie(conn, movie)
+        else:
+            print("Invalid choice. Please try again.")
     
     conn.close()
-    print("\nGoodbye!")
 
-# run the main function
+# run the main menu
 if __name__ == '__main__':
-    main()
+    main_menu()
