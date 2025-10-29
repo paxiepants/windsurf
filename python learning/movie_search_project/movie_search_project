@@ -1,4 +1,4 @@
-# project: movies input will be categorized based on imbd data into sqlite database
+# project: movies input will be categorized based on imbd data api into sqlite database
 
 # import required libraries
 import sqlite3
@@ -97,7 +97,10 @@ def display_movies(conn):
 # define main menu
 def main_menu():
     # Create database connection
-    conn = create_connection("movies.db")
+    import os
+    # Path to the database in the same directory as the script
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "movies.db")
+    conn = create_connection(db_path)
     if not conn:
         print("Error: Could not connect to the database")
         return
