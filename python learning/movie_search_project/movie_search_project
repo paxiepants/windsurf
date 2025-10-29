@@ -30,7 +30,7 @@ def create_table(conn):
     except Error as e:
         print(e)
    
-# imbd api for movie details
+# omdb api for movie details
 def search_movie(movie_name):
     url = "http://www.omdbapi.com/"
     params = {
