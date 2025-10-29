@@ -1,0 +1,111 @@
+# project: movies input will be categorized based on imbd data into sqlite database
+
+# import required libraries
+import sqlite3
+from sqlite3 import Error
+import requests
+
+
+# create a database connection
+def create_connection(db_file):
+    conn = None;
+    try:
+        conn = sqlite3.connect(db_file)
+        return conn
+    except Error as e:
+        print(e)
+    
+    return conn
+
+# create a table
+def create_table(conn):
+    try:
+        c = conn.cursor()
+        c.execute(''' 
+            CREATE TABLE IF NOT EXISTS movies (
+            id integer PRIMARY KEY,
+            title text NOT NULL,
+            year integer NOT NULL,
+            rating real NOT NULL
+            )
+        ''')
+    except Error as e:
+        print(e)
+   
+# imbd api for movie details
+def search_movie(movie_name):
+    url = "http://www.omdbapi.com/"
+    params = {
+        "apikey": "5e455587",
+        "t": movie_name
+    }
+    try:
+        response = requests.get(url, params=params)
+        data = response.json()
+        if data.get('Response') == 'False':
+            print(f"Error: {data.get('Error', 'Movie not found')}")
+            return None
+        return data
+    except Exception as e:
+        print(f"Error fetching movie data: {e}")
+        return None
+
+# insert a movie
+def insert_movie(conn, movie):
+    if not movie:
+        return False
+        
+    try:
+        title = movie.get('Title')
+        year = movie.get('Year', '0')
+        rating = movie.get('imdbRating', '0')
+        
+        # Basic validation
+        if not title:
+            print("Error: No title found in movie data")
+            return False
+            
+        c = conn.cursor()
+        c.execute(''' 
+            INSERT INTO movies (title, year, rating)
+            VALUES (?, ?, ?)
+        ''', (title, int(year) if year and year != 'N/A' else 0, 
+              float(rating) if rating and rating != 'N/A' else 0.0))
+        conn.commit()
+        print(f"Successfully added '{title}' ({year}) to the database!")
+        return True
+    except Error as e:
+        print(f"Database error: {e}")
+        return False
+    except Exception as e:
+        print(f"Error processing movie data: {e}")
+        return False
+
+# main function
+def main():
+    conn = create_connection("movies.db")
+    if not conn:
+        print("Error: Could not connect to the database")
+        return
+        
+    create_table(conn)
+    
+    while True:
+        movie_name = input("\nEnter movie name (or 'quit' to exit): ").strip()
+        if movie_name.lower() == 'quit':
+            break
+            
+        if not movie_name:
+            print("Please enter a valid movie name")
+            continue
+            
+        movie = search_movie(movie_name)
+        if movie:
+            insert_movie(conn, movie)
+    
+    conn.close()
+    print("\nGoodbye!")
+
+# run the main function
+if __name__ == '__main__':
+    main()
