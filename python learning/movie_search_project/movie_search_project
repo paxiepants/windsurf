@@ -1,19 +1,35 @@
 # project: movies input will be categorized based on imbd data api into sqlite database
 
 # import required libraries
+import logging
+from pathlib import Path
 import sqlite3
 from sqlite3 import Error
+from dataclasses import dataclass
+from typing import Optional
+
 import requests
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class MovieRecord:
+    title: str
+    year: Optional[int]
+    rating: Optional[float]
 
 
 # create a database connection
 def create_connection(db_file):
-    conn = None;
     try:
         conn = sqlite3.connect(db_file)
+        conn.row_factory = sqlite3.Row
         return conn
     except Error as e:
-        print(e)
+        logger.error("Database connection error: %s", e)
+        return None
+
 
 # create a table
 def create_table(conn):
@@ -28,7 +44,7 @@ def create_table(conn):
             )
         ''')
     except Error as e:
-        print(e)
+        logger.error("Database error while creating table: %s", e)
    
 # omdb api for movie details
 def search_movie(movie_name):
@@ -38,45 +54,73 @@ def search_movie(movie_name):
         "t": movie_name
     }
     try:
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
         data = response.json()
         if data.get('Response') == 'False':
-            print(f"Error: {data.get('Error', 'Movie not found')}")
+            logger.error("OMDb error: %s", data.get('Error', 'Movie not found'))
             return None
         return data
-    except Exception as e:
-        print(f"Error fetching movie data: {e}")
+    except requests.exceptions.RequestException as e:
+        logger.error("HTTP error fetching movie data: %s", e)
         return None
+    except ValueError as e:
+        logger.error("Invalid JSON response: %s", e)
+        return None
+
+
+def parse_movie(data):
+    if not data:
+        raise ValueError("No data to parse")
+
+    title = data.get('Title')
+    if not title:
+        raise ValueError("No title found in movie data")
+
+    year = data.get('Year')
+    if year and year != 'N/A':
+        year_fragment = year.replace('\u2013', '-').split('-', 1)[0].strip()
+        try:
+            year_value = int(year_fragment)
+        except ValueError:
+            year_value = None
+    else:
+        year_value = None
+
+    rating = data.get('imdbRating')
+    if rating and rating != 'N/A':
+        try:
+            rating_value = float(rating)
+        except ValueError:
+            rating_value = None
+    else:
+        rating_value = None
+
+    return MovieRecord(title=title, year=year_value, rating=rating_value)
+
 
 # insert a movie
 def insert_movie(conn, movie):
     if not movie:
         return False
-        
+
     try:
-        title = movie.get('Title')
-        year = movie.get('Year', '0')
-        rating = movie.get('imdbRating', '0')
-        
-        # Basic validation
-        if not title:
-            print("Error: No title found in movie data")
-            return False
-            
+        record = parse_movie(movie)
+
         c = conn.cursor()
         c.execute(''' 
             INSERT INTO movies (title, year, rating)
             VALUES (?, ?, ?)
-        ''', (title, int(year) if year and year != 'N/A' else 0, 
-              float(rating) if rating and rating != 'N/A' else 0.0))
+        ''', (record.title, record.year if record.year is not None else 0,
+              record.rating if record.rating is not None else 0.0))
         conn.commit()
-        print(f"Successfully added '{title}' ({year}) to the database!")
+        print(f"Successfully added '{record.title}' ({record.year or 'unknown year'}) to the database!")
         return True
     except Error as e:
-        print(f"Database error: {e}")
+        logger.error("Database error: %s", e)
         return False
     except Exception as e:
-        print(f"Error processing movie data: {e}")
+        logger.error("Error processing movie data: %s", e)
         return False
 
 # create a function to display all movies
@@ -88,51 +132,49 @@ def display_movies(conn):
         if not rows:
             print("No movies found in the database")
             return
-        
-        for row in rows:
-            print(f"Title: {row[1]}, Year: {row[2]}, Rating: {row[3]}")
+
+        for _, title, year, rating in rows:
+            print(f"Title: {title}, Year: {year}, Rating: {rating}")
     except Error as e:
-        print(f"Database error: {e}")
+        logger.error("Database error: %s", e)
 
 # define main menu
 def main_menu():
-    # Create database connection
-    import os
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     # Path to the database in the same directory as the script
-    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "movies.db")
+    db_path = Path(__file__).with_name("movies.db")
     conn = create_connection(db_path)
     if not conn:
-        print("Error: Could not connect to the database")
+        logger.error("Error: Could not connect to the database")
         return
-        
-    create_table(conn)
-    
-    while True:
-        print("\nMenu:")
-        print("1. Add a movie")
-        print("2. Display all movies")
-        print("3. Quit")
-        
-        choice = input("Enter your choice: ").strip()
-        
-        if choice == '1':
-            movie_name = input("\nEnter movie name: ").strip()
-            if not movie_name:
-                print("Please enter a valid movie name")
-                continue
-                
-            movie = search_movie(movie_name)
-            if movie:
-                insert_movie(conn, movie)
-        elif choice == '2':
-            display_movies(conn)
-        elif choice == '3':
-            print("\nGoodbye!")
-            break
-        else:
-            print("Invalid choice. Please try again.")
-    
-    conn.close()
+
+    with conn:
+        create_table(conn)
+
+        while True:
+            print("\nMenu:")
+            print("1. Add a movie")
+            print("2. Display all movies")
+            print("3. Quit")
+
+            choice = input("Enter your choice: ").strip()
+
+            if choice == '1':
+                movie_name = input("\nEnter movie name: ").strip()
+                if not movie_name:
+                    print("Please enter a valid movie name")
+                    continue
+
+                movie = search_movie(movie_name)
+                if movie:
+                    insert_movie(conn, movie)
+            elif choice == '2':
+                display_movies(conn)
+            elif choice == '3':
+                print("\nGoodbye!")
+                break
+            else:
+                print("Invalid choice. Please try again.")
 
 # run the main menu
 if __name__ == '__main__':
